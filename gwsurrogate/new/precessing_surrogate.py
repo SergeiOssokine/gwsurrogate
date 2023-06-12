@@ -877,7 +877,7 @@ filename: The hdf5 file containing the surrogate data."
 
     def __call__(self, x, fM_low=None, fM_ref=None, dtM=None,
             timesM=None, dfM=None, freqsM=None, mode_list=None, ellMax=None,
-            precessing_opts=None, tidal_opts=None, par_dict=None):
+            precessing_opts=None, tidal_opts=None, par_dict=None, modes_type="inertial"):
         """
 Evaluates a precessing surrogate model.
 
@@ -940,7 +940,7 @@ Arguments:
                                     }
     tidal_opts: Should be None for this model.
     par_dict: Should be None for this model.
-
+    modes_type: Whether to return co-orbital, co-precessing or inertial modes
 
 Returns:
     domain, h, dynamics.
@@ -1021,7 +1021,10 @@ Returns:
         # Transform the sparsely sampled waveform
         h_inertial = inertial_waveform_modes(self.t_coorb, orbphase, quat,
                 h_coorb)
-
+        if modes_type == "inertial":
+            h_ret = h_inertial
+        elif modes_type == "coorbital":
+            h_ret = h_coorb
         if timesM is not None:
             if timesM[-1] > self.t_coorb[-1] + 0.01:
                 raise Exception("'times' includes times larger than the"
@@ -1053,16 +1056,16 @@ Returns:
 
 
         if do_interp:
-            hre = splinterp_many(timesM, self.t_coorb, np.real(h_inertial))
-            him = splinterp_many(timesM, self.t_coorb, np.imag(h_inertial))
-            h_inertial = hre + 1.j*him
+            hre = splinterp_many(timesM, self.t_coorb, np.real(h_ret))
+            him = splinterp_many(timesM, self.t_coorb, np.imag(h_ret))
+            h_ret = hre + 1.j*him
 
         # Make mode dict
         h = {}
         i=0
         for ell in range(2, ellMax+1):
             for m in range(-ell, ell+1):
-                h[(ell, m)] = h_inertial[i]
+                h[(ell, m)] = h_ret[i]
                 i += 1
 
         #  Transform and interpolate spins if needed
